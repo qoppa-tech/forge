@@ -1,0 +1,100 @@
+# Milestone 1 validation — 16 September 2026
+
+## Status
+
+Compiled-program creation, funding and authorization checks pass in LiteSVM. **Milestone 1's local-validator exit criterion remains unpassed and deployment remains unapproved.** No local or remote deployment, validator reset, push or commit has been performed in this writer pass. Independent security review found no local-sandbox blocker; accepted reproducibility and disclosure findings are addressed below.
+
+## Observed versions
+
+| Component | Version |
+| --- | --- |
+| Anchor CLI, `anchor-lang`, `anchor-spl` | 1.2.0 |
+| Solana CLI (Nix package) | 4.0.3 |
+| Host Rust / Cargo in pinned Nix shell | 1.98.1 / 1.98.0 |
+| `cargo-build-sbf` | 4.3.0 |
+| Platform tools | v1.57 |
+| Platform Rust / Cargo | 1.95.0-dev (ae660768a, 2026-08-17) / 1.95.0 |
+| LiteSVM | 0.10.0 |
+
+Anchor's [versioned generated template](https://github.com/otter-sec/anchor/blob/v1.2.0/cli/src/template.rs) was inspected before choosing dependencies. Primary references: [Anchor 1.2.0 release](https://github.com/otter-sec/anchor/releases/tag/v1.2.0), [TypeScript compatibility](https://www.anchor-lang.com/docs/clients/typescript), [SBF builder](https://github.com/anza-xyz/cargo-build-sbf). `Cargo.lock` and `flake.lock` record exact retained dependency/tool resolution; no floating toolchain claim is made.
+
+## Rust results
+
+Commands below run from the repository root. Build and test commands use `nix-shell --run '…'`.
+
+| Command | Observed result |
+| --- | --- |
+| `cargo test --locked -p forge --test vault` before feature correction | Failed at compilation: Anchor init macro referenced disabled `token_2022` / `token_interface`. |
+| `bash scripts/build.sh && cargo test --locked -p forge --test vault` after correction | SBF and IDL generation passed; original 9 runtime tests passed. |
+| `cargo test --locked -p forge --test vault token_2022` | Passed real Token-2022 mint-owner substitution rejection. |
+| `cargo test --locked -p forge --test vault unexpected_token_program` | Passed system-program and Token-2022 program substitution rejection on both instructions. |
+| `cargo test --locked -p forge --test vault create_and_fund_exact_test_token_balance -- --exact --nocapture` | Passed; printed only public fixture identities, mint, in-process funding signature and balances: treasury `0`, vault `10000000000` base units. |
+| `bash scripts/build.sh && cargo test --locked -p forge` | Passed rebuild, IDL generation and all 10 runtime tests; no ignored tests. |
+| `cargo check --locked -p forge --all-targets` | Passed. |
+| `cargo fmt --all -- --check` | Passed. |
+| `cargo clippy --locked -p forge --all-targets -- -D warnings` | Passed after a test-only lint allowance retaining LiteSVM's public large-error result type and full failure logs. |
+| `git diff --check` and `git diff --cached --check` | Passed; nothing staged (new files are untracked). |
+| Per-file `git diff --no-index --check /dev/null <file>` | Authored source/config/docs clean. Supplied `docs/brand/REFERENCE-LICENSE.txt:22` reports one existing blank line at EOF; retained to preserve byte-identical source. |
+| Byte comparison against supplied spec/brand directory | All 7 brand files and product specification unchanged. |
+| `bash scripts/bootstrap.sh` | Passed against installed project-local builder 4.3.0; no host installation overwritten. |
+| `bash -n scripts/build.sh scripts/bootstrap.sh` | Passed. |
+
+Anchor 1.2.0's `init` token-account macro unconditionally emits `anchor_spl::token_interface` calls and Token-2022-aware space calculation. Enabling `anchor-spl/token_2022` is necessary even for legacy initialization. This does **not** relax the program's `Program<Token>` ID check or `Account<Mint/TokenAccount>` owner checks. Real Token-2022 rejection tests verify that boundary.
+
+### Negative-control evidence
+
+Original preimplementation red output was not retained across the previous writer timeout; no original TDD success is claimed. A fresh mutation check temporarily removed the zero-funding guard, rebuilt the actual SBF, and ran:
+
+```sh
+nix-shell --run 'bash scripts/build.sh && cargo test --locked -p forge --test vault funding_rejects_wrong_mint_source_owner_and_amounts'
+```
+
+It failed with `invalid direct call must fail`: the real SPL `TransferChecked` CPI accepted a zero transfer. Restoring the guard, rebuilding, and rerunning all 10 tests passed. No negative-control mutation remains.
+
+Final tested SBF SHA-256: `556c25e477c151cf540535a963182f14ed436fa43bfda8c397ee16c47fa2829e`.
+Generated IDL SHA-256: `b420b947825cc44b1d4ec0561382ec2c681f113384a05fec0c906cc089a36422`.
+
+This pass reused installed project-local build tools and dependency caches; a clean-machine bootstrap was not independently repeated. NixOS host already had `nix-ld` for upstream platform-tools binaries. No host configuration was modified.
+
+### LSP limitation
+
+Proactive Rust LSP diagnostics emitted false primitive/slice errors such as `cannot apply unary operator ! to type bool`. Host Rust source was absent during diagnosis; cached findings persisted even after the parent's attempted session deferral. Pinned-shell Cargo compilation, all-target checking and actual runtime tests passed instead; Rust LSP cleanliness is **not** claimed and correct code was not rewritten or suppressed to silence those errors.
+
+## Independent review and accepted corrections
+
+The parent independently reran the full build/runtime/check/format/Clippy sequence and the public-only fixture. All 10 runtime tests passed, fixture balances matched, and SBF/IDL hashes matched the values above. A fresh security reviewer found no blocker for this local-only sandbox.
+
+Two accepted findings were addressed without program changes:
+
+- **Nested Nix dependency lookup:** `cargo-build-sbf` 4.3.0 invokes `nix-build` with `import <nixpkgs> {}` to patch upstream ELF dependencies on NixOS. That lookup previously inherited the host search path instead of `flake.lock`. `flake.nix` now sets the development shell's `NIX_PATH` directly to the locked input's `outPath`; no host configuration is changed.
+- **Mint authority disclosure:** README now states that the fixture treasury retains mint authority and can issue additional test tokens, while the mint has no freeze authority. This documents the existing `create_mint` fixture behavior.
+
+Focused regression check:
+
+```sh
+bash scripts/check-nix-path.sh
+```
+
+Before the fix it failed with `file 'nixpkgs' was not found in the Nix search path` when inherited `NIX_PATH` was unset. After the fix, nested `nix-instantiate --find-file nixpkgs` matched the source resolved from `flake.lock` for both unset and deliberately bogus inherited `NIX_PATH`. The test selects its Bash executable explicitly so nix-shell's startup Bash lookup is separate from the nested lookup being checked.
+
+Fresh writer rerun after the environment change (exit 0):
+
+```sh
+nix-shell --run 'bash scripts/bootstrap.sh && bash scripts/build.sh && cargo test --locked -p forge && cargo check --locked -p forge --all-targets && cargo fmt --all -- --check && cargo clippy --locked -p forge --all-targets -- -D warnings'
+bash -n scripts/check-nix-path.sh scripts/bootstrap.sh scripts/build.sh
+sha256sum target/deploy/forge.so target/idl/forge.json
+```
+
+SBF/IDL generation passed, all 10 runtime tests passed, compiler/format/Clippy checks passed, shell syntax passed, and both artifact hashes remained unchanged. Proactive diagnostics for the changed Nix file and new shell check reported no errors; the separate Rust LSP limitation remains as described above.
+
+**Residual supply-chain trust:** the upstream builder selects platform-tools release v1.57, but this repository does not pin the compiler archive's SHA-256 or use a fixed-output Nix downloader for that archive. That optional hardening is deferred, not implemented or claimed. The build reused existing tool and dependency caches; the new check proves nested lookup selection, not a full cold download/repatch or clean-machine bootstrap. Local-validator deployment and its acceptance gate remain unapproved/unpassed.
+
+## JavaScript dependency evaluation (candidate rejected)
+
+An optional TypeScript seed client was investigated using Node 24.20.0 / npm 11.19.0. Initial `npm install --ignore-scripts` succeeded; lifecycle scripts were not run. `npm audit --json` failed with 12 findings (5 high, 7 moderate, including parent-package metavulnerabilities). Exact candidate paths:
+
+- `@anchor-lang/core@1.2.0 → toml@3.0.0`: [recursion](https://github.com/advisories/GHSA-82x6-q7mm-w9cf), [prototype pollution](https://github.com/advisories/GHSA-v5mp-jgw5-2x6j).
+- `@solana/spl-token@0.4.15 → @solana/buffer-layout-utils@0.3.0 → bigint-buffer@1.1.5`: [native buffer overflow](https://github.com/advisories/GHSA-3gc7-fjrx-p6mg).
+- `@solana/web3.js@1.99.0 → jayson@4.3.0 → stream-json@1.9.1 / uuid@8.3.2`: [nested-input DoS](https://github.com/advisories/GHSA-528h-pc64-c93x), [buffer bounds](https://github.com/advisories/GHSA-w5hq-g745-h8pq).
+
+No blanket override, forced downgrade, audit suppression or risk waiver was applied. The supervisor approved a smaller milestone: retain the existing Rust/LiteSVM fixture and defer the network seed client until deployment approval. Candidate package manifests, npm lockfile, TypeScript configuration and draft seed test were removed; **no JavaScript application/client dependencies are retained**. Ignored `node_modules/` remains an unused local investigation artifact, not a shipped dependency. Node was removed from the development shell. TypeScript typecheck/client tests were not completed and are not claimed as evidence; SDK/API work remains milestone 3. Generated IDL/TS types remain build outputs only.

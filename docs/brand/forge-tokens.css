@@ -1,0 +1,81 @@
+/* FORGE v0.1: authored adaptation of the enterprise structure in VoltAgent's IBM reference. */
+:root, [data-theme="light"] {
+  color-scheme: light;
+  --forge-canvas: #F4F2ED;
+  --forge-surface: #FFFFFF;
+  --forge-raised: #ECEDE8;
+  --forge-ink: #17232D;
+  --forge-muted: #58646C;
+  --forge-brand: #A5482B;
+  --forge-brand-hover: #873B24;
+  --forge-on-brand: #FFFFFF;
+  --forge-brand-wash: #F3E4DC;
+  --forge-border: #D6D8D4;
+  --forge-control-border: #79838A;
+  --forge-focus: #245BBA;
+  --forge-success: #216449;
+  --forge-success-bg: #E8F2EB;
+  --forge-warning: #765400;
+  --forge-warning-bg: #FFF0CC;
+  --forge-error: #A8263C;
+  --forge-error-bg: #FCECEF;
+  --forge-info: #245BBA;
+  --forge-info-bg: #E9F0FC;
+  --forge-font: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --forge-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --forge-space-1: 4px;
+  --forge-space-2: 8px;
+  --forge-space-3: 12px;
+  --forge-space-4: 16px;
+  --forge-space-6: 24px;
+  --forge-space-8: 32px;
+  --forge-space-12: 48px;
+  --forge-space-16: 64px;
+  --forge-space-24: 96px;
+  --forge-radius: 4px;
+  --forge-radius-badge: 2px;
+  --forge-duration: 160ms;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+  --forge-canvas: #121B22;
+  --forge-surface: #1B2730;
+  --forge-raised: #25333D;
+  --forge-ink: #F4F2ED;
+  --forge-muted: #AAB6BC;
+  --forge-brand: #E6A080;
+  --forge-brand-hover: #F1B798;
+  --forge-on-brand: #121B22;
+  --forge-brand-wash: #3D2B27;
+  --forge-border: #38454D;
+  --forge-control-border: #7C8A93;
+  --forge-focus: #8EB9FF;
+  --forge-success: #9CDEBB;
+  --forge-success-bg: #17382A;
+  --forge-warning: #F3CE78;
+  --forge-warning-bg: #3B3118;
+  --forge-error: #FFABB7;
+  --forge-error-bg: #412630;
+  --forge-info: #ACC9FF;
+  --forge-info-bg: #1E304C;
+}
+.forge-numeric { font-variant-numeric: tabular-nums lining-nums; }
+.forge-mono { font-family: var(--forge-mono); }
+.forge-primary {
+  min-height: 44px;
+  padding: 12px 20px;
+  border: 1px solid transparent;
+  border-radius: var(--forge-radius);
+  background: var(--forge-brand);
+  color: var(--forge-on-brand);
+  font: 500 14px/1.4 var(--forge-font);
+  transition: background-color var(--forge-duration) ease;
+}
+.forge-primary:hover { background: var(--forge-brand-hover); }
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--forge-focus);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root { --forge-duration: 0ms; }
+}

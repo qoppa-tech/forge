@@ -1,0 +1,12 @@
+/target/
+/node_modules/
+/.anchor/
+/.local/
+/.tools/
+/.cache/
+/.pi-subagents/
+/test-ledger/
+.env
+.env.*
+*-keypair.json
+.DS_Store

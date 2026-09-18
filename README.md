@@ -2,7 +2,7 @@
 
 **Banking infrastructure. Onchain.**
 
-Proprietary developer sandbox for traditional-bank workflows on Solana. This checkout implements **milestone 1 only**: creation and treasury funding of a PDA-controlled vault. It is not a banking service, audited protocol, or production-ready custody system.
+Proprietary developer sandbox for traditional-bank workflows on Solana. On-chain functionality implements **milestone 1 only**: creation and treasury funding of a PDA-controlled vault. The Bun/Nx workspace also contains application starters, two health-only services and an IDL-only SDK foundation. It is not a banking service, audited protocol, or production-ready custody system.
 
 ## Implemented boundary
 
@@ -14,7 +14,63 @@ Proprietary developer sandbox for traditional-bank workflows on Solana. This che
 
 **Funds cannot leave the vault at this milestone.** Withdrawal, loan approval, draw, repayment and pause instructions do not exist yet. Approver keys and lending limits are stored for the next milestone; no lending policy is claimed operational. Never fund with assets of real value.
 
-## Build and test without deployment
+## Bun + Nx workspace
+
+| Path | Nx project | Current scope |
+| --- | --- | --- |
+| `apps/web` | `web` | Next.js dashboard starter, port 3001; Docker configuration. |
+| `apps/native` | `native` | Expo + Uniwind starter; Metro on port 8081. |
+| `apps/backend` | `backend` | Bun/TypeScript service; `GET /health` on `127.0.0.1:3000`. |
+| `services/banking` | `banking` | Go standard-library service; `GET /health` on `127.0.0.1:3002`. |
+| `packages/sdk` | `@forge/sdk` | Public IDL, generated `Forge` type and `FORGE_PROGRAM_ID`; no transaction builders. |
+| `programs/forge` | `onchain` | Existing Rust/Anchor vault program, unchanged. |
+| `packages/ui` | `@forge/ui` | Generated shared web UI components. |
+| `packages/config` | `@forge/config` | Shared TypeScript configuration. |
+
+These workspace choices supersede the proposed Vite/single-service layout in the earlier MVP specification; financial milestones and deployment gates remain unchanged. Frontends are scaffold screens, not working banking dashboards. Services have no financial endpoints, persistence, authentication, payments, keys or bank integration. Health reports process liveness only.
+
+```sh
+nix-shell
+bun install --frozen-lockfile
+npx nx run-many -t build
+npx nx run-many -t check-types test
+bun run check
+npx nx graph
+```
+
+Use `--parallel=1` on build/check commands on memory-constrained machines. Six projects have build targets; UI is compiled by Next.js and config has no build output. Expo's build exports iOS/Android JavaScript bundles and static web assets, **not signed IPA/APK binaries**. Device/simulator testing is separate. Native folder generation is an explicit `bun run --cwd apps/native native:generate` command, not a `prebuild` lifecycle hook.
+
+```sh
+bun run dev:web
+bun run dev:native
+bun run dev:backend
+bun run dev:banking
+# Or start all four:
+bun run dev
+```
+
+Backend accepts `HOST`/`PORT`; banking accepts `BANKING_ADDR`. Defaults bind both service shells to loopback. No frontend-to-service or Go-to-chain integration is claimed. Actual graph edges include `backend -> @forge/sdk -> onchain` and `web -> @forge/ui`; Go remains independent until an integration exists.
+
+SDK build depends on the Anchor build, copies only public IDL/types into ignored `packages/sdk/src/generated/`, and emits JavaScript, declarations and JSON under `dist/`. Never edit or commit those generated copies. Nx caches public program outputs, not generated keypairs; Nx Cloud is disabled.
+
+The scaffold came from Better-T-Stack **3.44.0**, generated in `.cache/` and integrated without replacing existing Git/Cargo files. `bts.jsonc` records generator choices, not the separately added backend/Go services. `bun.lock` locks dependencies. Requested addons are configured: Nx, Oxlint/Ultracite, project-local MCP (`.mcp.json`: Nx and Next DevTools), and local React/Expo skills (`.agents/skills`, `skills-lock.json`). MCP configuration is not an automatically running server. No global agent settings were changed.
+
+Web image build, without starting or deploying a container:
+
+```sh
+docker compose config --quiet
+docker compose build web
+```
+
+No `.env` file is required for this scaffold. `.env.schema` files are tracked; value files are ignored. Docker context excludes local tools, caches, Rust outputs and keypairs. Docker runtime and mobile device behavior still require separate validation.
+
+Static graph export:
+
+```sh
+npx nx graph --file=.cache/nx/project-graph.html
+```
+
+## Rust build and test without deployment
 
 Tested platform: Nix on x86_64 Linux. `flake.lock` pins Anchor 1.2.0, Solana CLI 4.0.3 and host tools. `shell.nix` uses that same lock and also works before the initial Git commit. The development shell pins `NIX_PATH` to this locked source, including the SBF builder's nested NixOS dependency lookup. On NixOS, the downloaded upstream platform-tools executables require `nix-ld` support; the tested host already provides it. This repository does not change system or Home Manager configuration.
 
@@ -42,7 +98,7 @@ cargo test --locked -p forge --test vault create_and_fund_exact_test_token_balan
 
 It creates independent treasury and two approver wallets, issues the disclosed test supply, creates the vault and funds it. Output contains only public role identities, the configured mint, vault/token-account addresses, the funding signature and integer balances. Expected treasury cash: `0`; vault cash: `10000000000`. Wallets are random and held only in memory; addresses and signatures change each run, while the accounting assertions remain reproducible. The signature is an in-process test receipt, not a finalized network transaction or explorer link.
 
-A network seed CLI is deferred until the local-validator deployment step is explicitly approved. No JavaScript application/client dependencies are retained; the generated IDL and TypeScript type are build outputs for milestone 3's SDK.
+A network seed CLI is deferred until the local-validator deployment step is explicitly approved. The workspace SDK packages the generated IDL and TypeScript type, but milestone 3's transaction builders and integration workflow are not implemented.
 
 **LiteSVM is not a local validator.** No deployment or local-validator acceptance is claimed. Do not run `anchor test` as a deployment-free test command: it automatically deploys. Local-validator deployment/test execution requires separate explicit approval; loans remain out of scope until that gate passes.
 
@@ -53,12 +109,12 @@ A network seed CLI is deferred until the local-validator deployment step is expl
 - Creating a vault does not certify a bank, and the rules restrict FORGE instructions, not every transfer of the token. Direct token donations can increase cash; no loan allocation or reconciler is implemented yet.
 - There is no deployed program or established upgrade authority in this checkout. If deployed with the upgradeable loader later, the chosen deployment wallet retains upgrade control unless explicitly changed. The prototype must not claim the deployer has no control. `Anchor.toml` names the demonstration treasury wallet by default; deployment authority selection must be recorded at that approved step.
 - Builds preserve the declared test program ID using `--ignore-keys`. Generated program keypairs are local artifacts, not portable deployment identities; verify/synchronize the chosen ID and keypair during an approved deployment workflow.
-- No API, server, database, SDK package, borrower wallet, dashboard or loan lifecycle is delivered in this milestone.
+- Application/service scaffolds and SDK metadata do not implement a banking API, database, borrower wallet, operational dashboard or loan lifecycle.
 
 See [validation evidence and remaining gates](docs/validation.md), [product specification](docs/FORGE-MVP-v0.1.md), and [implementation plan](docs/plans/2026-09-16-vault.md).
 
 ## Brand and licensing
 
-[DESIGN.md](DESIGN.md) and [docs/brand/](docs/brand/) preserve the supplied visual identity. Logo concepts and HTML are references, not a working operator interface or finalized vector mark. No screens were built.
+[DESIGN.md](DESIGN.md) and [docs/brand/](docs/brand/) preserve the supplied visual identity. Logo concepts and HTML are references, not a working operator interface or finalized vector mark. Generated starter screens are not branded banking interfaces.
 
 Application source is proprietary; no open-source license is granted. The MIT notice in `docs/brand/REFERENCE-LICENSE.txt` applies to the referenced brand collection, not the application. Dependency licenses remain their own.

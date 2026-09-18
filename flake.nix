@@ -13,6 +13,9 @@
         # cargo-build-sbf imports <nixpkgs> when patching its NixOS ELF dependencies.
         NIX_PATH = "nixpkgs=${nixpkgs.outPath}";
         packages = with pkgs; [
+          bun
+          nodejs_24
+          go
           anchor
           solana-cli
           cargo

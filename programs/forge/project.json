@@ -1,0 +1,36 @@
+{
+  "name": "onchain",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "programs/forge/src",
+  "namedInputs": {
+    "default": [
+      "{projectRoot}/**/*",
+      "{workspaceRoot}/Cargo.toml",
+      "{workspaceRoot}/Cargo.lock",
+      "{workspaceRoot}/Anchor.toml",
+      "{workspaceRoot}/flake.nix",
+      "{workspaceRoot}/flake.lock",
+      "{workspaceRoot}/shell.nix",
+      "{workspaceRoot}/scripts/*.sh"
+    ],
+    "production": ["default", "!{projectRoot}/tests/**"]
+  },
+  "targets": {
+    "build": {
+      "command": "nix-shell --run 'bash scripts/bootstrap.sh && bash scripts/build.sh'",
+      "outputs": [
+        "{workspaceRoot}/target/deploy/forge.so",
+        "{workspaceRoot}/target/idl/forge.json",
+        "{workspaceRoot}/target/types/forge.ts"
+      ]
+    },
+    "test": {
+      "command": "nix-shell --run 'cargo test --locked -p forge'",
+      "dependsOn": ["build"]
+    },
+    "check-types": {
+      "command": "nix-shell --run 'cargo clippy --locked -p forge --all-targets -- -D warnings'"
+    }
+  }
+}

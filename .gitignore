@@ -1,5 +1,5 @@
 /target/
-/node_modules/
+node_modules/
 /.anchor/
 /.local/
 /.tools/
@@ -8,5 +8,16 @@
 /test-ledger/
 .env
 .env.*
+!.env.schema
+!.env.example
 *-keypair.json
 .DS_Store
+
+# Nx, JavaScript and Go build artifacts
+.nx/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+*.log
+/packages/sdk/src/generated/

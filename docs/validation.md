@@ -56,6 +56,12 @@ Generated IDL SHA-256: `b420b947825cc44b1d4ec0561382ec2c681f113384a05fec0c906cc0
 
 This pass reused installed project-local build tools and dependency caches; a clean-machine bootstrap was not independently repeated. NixOS host already had `nix-ld` for upstream platform-tools binaries. No host configuration was modified.
 
+## Milestone 2 loan lifecycle implementation
+
+The Anchor program now includes persistent `Loan` accounts and the complete local prototype flow: `propose_loan`, `approve_loan`, `draw_loan`, `repay_loan`, `withdraw_available` and `set_disbursement_paused`. Terms are fixed at proposal, two distinct configured approvers are required, draw and repayment update vault accounting atomically with legacy SPL Token transfers, and withdrawal is limited to actual vault cash.
+
+The existing vault regression suite remains green, and `loan_lifecycle_requires_approvals_and_closes_once` exercises the compiled SBF through proposal, both approvals, draw, repayment, pause and dual-approver withdrawal in LiteSVM. This is implementation evidence only; the local-validator deployment gate remains unpassed and no deployment is claimed.
+
 ### LSP limitation
 
 Proactive Rust LSP diagnostics emitted false primitive/slice errors such as `cannot apply unary operator ! to type bool`. Host Rust source was absent during diagnosis; cached findings persisted even after the parent's attempted session deferral. Pinned-shell Cargo compilation, all-target checking and actual runtime tests passed instead; Rust LSP cleanliness is **not** claimed and correct code was not rewritten or suppressed to silence those errors.

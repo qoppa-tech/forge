@@ -2,7 +2,7 @@
 
 **Banking infrastructure. Onchain.**
 
-Proprietary developer sandbox for traditional-bank workflows on Solana. On-chain functionality implements vault creation/funding and the **milestone 2 loan lifecycle**. The Bun/Nx workspace also contains application starters, two health-only services and an IDL-only SDK foundation. It is not a banking service, audited protocol, or production-ready custody system.
+Open source developer sandbox for traditional-bank workflows on Solana. On-chain functionality implements vault creation/funding and the **milestone 2 loan lifecycle**. The Bun/Nx workspace also contains application starters, two health-only services and an IDL-only SDK foundation. It is not a banking service, audited protocol, or production-ready custody system.
 
 ## Implemented boundary
 

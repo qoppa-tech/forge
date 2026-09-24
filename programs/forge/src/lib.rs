@@ -1,6 +1,17 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, TransferChecked};
 
+pub mod loan;
+pub(crate) use loan::{
+    __client_accounts_approve_loan, __client_accounts_draw_loan, __client_accounts_propose_loan,
+    __client_accounts_repay_loan, __client_accounts_set_disbursement_paused,
+    __client_accounts_withdraw_available,
+};
+pub use loan::{
+    ApproveLoan, DrawLoan, Loan, LoanState, ProposeLoan, RepayLoan, SetDisbursementPaused,
+    WithdrawAvailable,
+};
+
 declare_id!("4niyjcxN6ySLBVePpUaUHrUEQZvyKDyNYfiQ8N4FUTgP");
 
 pub const TEST_TOKEN_DECIMALS: u8 = 6;
@@ -55,6 +66,47 @@ pub mod forge {
             amount,
             ctx.accounts.mint.decimals,
         )
+    }
+
+    pub fn propose_loan(
+        ctx: Context<ProposeLoan>,
+        loan_id: [u8; 32],
+        principal: u64,
+        term_rate_bps: u16,
+        term_seconds: i64,
+        offer_expiry: i64,
+    ) -> Result<()> {
+        loan::propose_loan(
+            ctx,
+            loan_id,
+            principal,
+            term_rate_bps,
+            term_seconds,
+            offer_expiry,
+        )
+    }
+
+    pub fn approve_loan(ctx: Context<ApproveLoan>) -> Result<()> {
+        loan::approve_loan(ctx)
+    }
+
+    pub fn draw_loan(ctx: Context<DrawLoan>) -> Result<()> {
+        loan::draw_loan(ctx)
+    }
+
+    pub fn repay_loan(ctx: Context<RepayLoan>) -> Result<()> {
+        loan::repay_loan(ctx)
+    }
+
+    pub fn withdraw_available(ctx: Context<WithdrawAvailable>, amount: u64) -> Result<()> {
+        loan::withdraw_available(ctx, amount)
+    }
+
+    pub fn set_disbursement_paused(
+        ctx: Context<SetDisbursementPaused>,
+        paused: bool,
+    ) -> Result<()> {
+        loan::set_disbursement_paused(ctx, paused)
     }
 }
 
@@ -138,4 +190,32 @@ pub enum ForgeError {
     InvalidMintDecimals,
     #[msg("Funding amount must be positive")]
     InvalidAmount,
+    #[msg("The signer is not a configured approver")]
+    UnauthorizedApprover,
+    #[msg("Loan term must be positive")]
+    InvalidTerm,
+    #[msg("Offer expiry must be in the future")]
+    InvalidExpiry,
+    #[msg("Loan principal exceeds the per-loan limit")]
+    PerLoanLimitExceeded,
+    #[msg("Loan arithmetic overflowed")]
+    MathOverflow,
+    #[msg("Loan arithmetic underflowed")]
+    MathUnderflow,
+    #[msg("Loan is in an invalid state for this instruction")]
+    InvalidLoanState,
+    #[msg("This approver has already approved the loan")]
+    AlreadyApproved,
+    #[msg("Disbursement is paused")]
+    DisbursementPaused,
+    #[msg("Loan offer has expired")]
+    LoanExpired,
+    #[msg("Outstanding principal limit exceeded")]
+    OutstandingLimitExceeded,
+    #[msg("Vault has insufficient liquidity")]
+    InsufficientLiquidity,
+    #[msg("Borrower does not match the loan")]
+    InvalidBorrower,
+    #[msg("Destination does not belong to the borrower")]
+    InvalidDestination,
 }

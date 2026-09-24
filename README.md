@@ -2,17 +2,17 @@
 
 **Banking infrastructure. Onchain.**
 
-Proprietary developer sandbox for traditional-bank workflows on Solana. On-chain functionality implements **milestone 1 only**: creation and treasury funding of a PDA-controlled vault. The Bun/Nx workspace also contains application starters, two health-only services and an IDL-only SDK foundation. It is not a banking service, audited protocol, or production-ready custody system.
+Open source developer sandbox for traditional-bank workflows on Solana. On-chain functionality implements vault creation/funding and the **milestone 2 loan lifecycle**. The Bun/Nx workspace also contains application starters, two health-only services and an IDL-only SDK foundation. It is not a banking service, audited protocol, or production-ready custody system.
 
 ## Implemented boundary
 
-- One Anchor program; `create_vault` and `fund_vault` only.
+- One Anchor program; vault creation/funding plus propose, approve, draw, repay, withdrawal and disbursement pause instructions.
 - Treasury signs creation and funding. Two distinct approver public keys, limits, mint and treasury destination are recorded immutably.
 - Vault PDA: `["vault", treasury, 32-byte vault ID]`. Its legacy SPL token account uses `["tokens", vault]`; SPL Token owns that account, while the vault PDA is its transfer authority.
 - Treasury explicitly selects a six-decimal legacy mint at creation. That address is fixed for the vault, not a global issuer allowlist or proof of bank identity. Wrong mints, owners, token programs and cross-vault account substitutions fail.
 - Funding uses checked integer token transfers. The fixture funds **10,000 FORGE_TEST_USD = 10,000,000,000 base units**.
 
-**Funds cannot leave the vault at this milestone.** Withdrawal, loan approval, draw, repayment and pause instructions do not exist yet. Approver keys and lending limits are stored for the next milestone; no lending policy is claimed operational. Never fund with assets of real value.
+Loan terms are fixed at proposal, require two distinct approver approvals, and can be drawn once by the designated borrower. Repayment collects the fixed payoff, while withdrawal only transfers actual vault cash and requires both approvers. This is still a local prototype; never fund it with assets of real value.
 
 ## Bun + Nx workspace
 
@@ -100,16 +100,16 @@ It creates independent treasury and two approver wallets, issues the disclosed t
 
 A network seed CLI is deferred until the local-validator deployment step is explicitly approved. The workspace SDK packages the generated IDL and TypeScript type, but milestone 3's transaction builders and integration workflow are not implemented.
 
-**LiteSVM is not a local validator.** No deployment or local-validator acceptance is claimed. Do not run `anchor test` as a deployment-free test command: it automatically deploys. Local-validator deployment/test execution requires separate explicit approval; loans remain out of scope until that gate passes.
+**LiteSVM is not a local validator.** No deployment or local-validator acceptance is claimed. Do not run `anchor test` as a deployment-free test command: it automatically deploys. Local-validator deployment/test execution requires separate explicit approval.
 
 ## Trust and operational limits
 
 - `FORGE_TEST_USD` is a fixture label, not token metadata, redeemable currency, certified security or transferable loan instrument. Fixtures issue test supply explicitly; funding does not mint tokens. The fixture treasury retains mint authority and can issue additional test tokens. The mint has no freeze authority.
 - Fixtures use independently generated demonstration treasury and approver wallets held only in memory. No real bank/customer data is required. Generated build keys stay under ignored `target/` and must never be reused outside disposable local testing.
-- Creating a vault does not certify a bank, and the rules restrict FORGE instructions, not every transfer of the token. Direct token donations can increase cash; no loan allocation or reconciler is implemented yet.
+- Creating a vault does not certify a bank, and the rules restrict FORGE instructions, not every transfer of the token. Direct token donations can increase cash; they do not allocate repayment or alter loan state.
 - There is no deployed program or established upgrade authority in this checkout. If deployed with the upgradeable loader later, the chosen deployment wallet retains upgrade control unless explicitly changed. The prototype must not claim the deployer has no control. `Anchor.toml` names the demonstration treasury wallet by default; deployment authority selection must be recorded at that approved step.
 - Builds preserve the declared test program ID using `--ignore-keys`. Generated program keypairs are local artifacts, not portable deployment identities; verify/synchronize the chosen ID and keypair during an approved deployment workflow.
-- Application/service scaffolds and SDK metadata do not implement a banking API, database, borrower wallet, operational dashboard or loan lifecycle.
+- Application/service scaffolds and SDK metadata do not implement a banking API, database, borrower wallet or operational dashboard.
 
 See [validation evidence and remaining gates](docs/validation.md), [product specification](docs/FORGE-MVP-v0.1.md), and [implementation plan](docs/plans/2026-09-16-vault.md).
 

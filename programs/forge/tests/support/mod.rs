@@ -234,7 +234,7 @@ impl Fixture {
         extra_index: Option<usize>,
     ) -> TransactionResult {
         let payer = &self.approvers[index];
-        let extra = extra_index.map(|index| &self.approvers[index]);
+        let extra = extra_index.map(|extra_i| &self.approvers[extra_i]);
         let extra = extra.into_iter().collect::<Vec<_>>();
         send(&mut self.svm, payer, &[ix], &extra)
     }
